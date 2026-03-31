@@ -1,6 +1,8 @@
 package com.github.sansarch.productcatalogapi.domain.service;
 
 import com.github.sansarch.productcatalogapi.domain.entity.Product;
+import com.github.sansarch.productcatalogapi.domain.exception.DuplicateSkuException;
+import com.github.sansarch.productcatalogapi.domain.exception.ProductNotFoundException;
 import com.github.sansarch.productcatalogapi.domain.repository.ProductRepository;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
@@ -28,14 +30,14 @@ public class ProductService {
     @Cacheable(value = "products", key = "#id")
     public Product getById(Long id) {
         return repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Product not found: " + id));
+                .orElseThrow(() -> new ProductNotFoundException(id));
     }
 
     // Cache by SKU
     @Cacheable(value = "products", key = "#sku")
     public Product getBySku(String sku) {
         return repository.findBySku(sku)
-                .orElseThrow(() -> new RuntimeException("Product not found: " + sku));
+                .orElseThrow(() -> new ProductNotFoundException(sku));
     }
 
     // Cache the entire list for a given category
@@ -53,6 +55,9 @@ public class ProductService {
     // @CachePut updates the cache when you save -- keeps it in sync
     @CachePut(value = "products", key = "#result.id")
     public Product save(Product product) {
+        if (repository.findBySku(product.getSku()).isPresent()) {
+            throw new DuplicateSkuException(product.getSku());
+        }
         return repository.save(product);
     }
 

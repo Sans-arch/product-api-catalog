@@ -1,4 +1,4 @@
-package com.github.sansarch.productcatalogapi;
+package com.github.sansarch.productcatalogapi.infra;
 
 import org.springframework.cache.CacheManager;
 import org.springframework.context.annotation.Bean;
