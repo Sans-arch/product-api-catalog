@@ -2,6 +2,8 @@ package com.github.sansarch.productcatalogapi.domain.entity;
 
 import jakarta.persistence.*;
 
+import java.io.Serializable;
+
 @Entity
 @Table(
         name = "products",
@@ -16,7 +18,7 @@ import jakarta.persistence.*;
                 @Index(name = "idx_product_sku", columnList = "sku", unique = true)
         }
 )
-public class Product {
+public class Product implements Serializable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
