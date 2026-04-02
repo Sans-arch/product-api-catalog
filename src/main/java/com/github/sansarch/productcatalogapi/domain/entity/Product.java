@@ -3,6 +3,7 @@ package com.github.sansarch.productcatalogapi.domain.entity;
 import jakarta.persistence.*;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
 
 @Entity
 @Table(
@@ -34,7 +35,7 @@ public class Product implements Serializable {
     private String sku;
 
     @Column(nullable = false)
-    private Double price;
+    private BigDecimal price;
 
     @Column(length = 1000)
     private String description;
@@ -71,11 +72,11 @@ public class Product implements Serializable {
         this.sku = sku;
     }
 
-    public Double getPrice() {
+    public BigDecimal getPrice() {
         return price;
     }
 
-    public void setPrice(Double price) {
+    public void setPrice(BigDecimal price) {
         this.price = price;
     }
 
