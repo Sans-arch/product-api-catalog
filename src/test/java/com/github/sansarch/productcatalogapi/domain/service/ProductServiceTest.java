@@ -26,6 +26,9 @@ class ProductServiceTest {
     @Mock
     private ProductRepository repository;
 
+    @Mock
+    private ProductQueryService queryService;
+
     @InjectMocks
     private ProductService service;
 
@@ -40,26 +43,24 @@ class ProductServiceTest {
         product.setCategory("Electronics");
         product.setPrice(new BigDecimal("1999.99"));
         product.setDescription("Apple M3 chip");
-
-        service.setSelf(service); // manually wire the self reference for caching to work in tests
     }
 
     @Test
     @DisplayName("should return product when ID exists")
     void shouldReturnProductWhenIdExists() {
-        when(repository.findById(1L)).thenReturn(Optional.of(product));
+        when(queryService.getById(1L)).thenReturn(product);
 
         Product result = service.getById(1L);
 
         assertThat(result.getName()).isEqualTo("MacBook Pro");
         assertThat(result.getSku()).isEqualTo("MBP-001");
-        verify(repository, times(1)).findById(1L);
+        verify(queryService, times(1)).getById(1L);
     }
 
     @Test
     @DisplayName("should throw ProductNotFoundException when ID does not exist")
     void shouldThrowProductNotFoundExceptionWhenIdDoesNotExist() {
-        when(repository.findById(999L)).thenReturn(Optional.empty());
+        when(queryService.getById(999L)).thenThrow(new ProductNotFoundException(999L));
 
         assertThatThrownBy(() -> service.getById(999L))
                 .isInstanceOf(ProductNotFoundException.class)
@@ -93,13 +94,13 @@ class ProductServiceTest {
     @Test
     @DisplayName("should return matching products when category exists")
     void shouldReturnMatchingProductsWhenCategoryExists() {
-        when(repository.findByCategory("Electronics")).thenReturn(List.of(product));
+        when(queryService.getByCategory("Electronics")).thenReturn(List.of(product));
 
         List<Product> results = service.getByCategory("Electronics");
 
         assertThat(results).hasSize(1);
         assertThat(results.getFirst().getCategory()).isEqualTo("Electronics");
-        verify(repository, times(1)).findByCategory("Electronics");
+        verify(queryService, times(1)).getByCategory("Electronics");
     }
 
     @Test
@@ -115,7 +116,7 @@ class ProductServiceTest {
     @Test
     @DisplayName("should throw ProductNotFoundException when updating non-existing product")
     void shouldThrowProductNotFoundExceptionWhenUpdatingNonExistingProduct() {
-        when(repository.findById(999L)).thenReturn(Optional.empty());
+        when(queryService.getById(999L)).thenThrow(new ProductNotFoundException(999L));
 
         assertThatThrownBy(() -> service.update(999L, product))
                 .isInstanceOf(ProductNotFoundException.class);
@@ -146,19 +147,19 @@ class ProductServiceTest {
     @Test
     @DisplayName("should return product when SKU exists")
     void shouldReturnProductWhenSkuExists() {
-        when(repository.findBySku("MBP-001")).thenReturn(Optional.of(product));
+        when(queryService.getBySku("MBP-001")).thenReturn(product);
 
         Product result = service.getBySku("MBP-001");
 
         assertThat(result.getSku()).isEqualTo("MBP-001");
         assertThat(result.getName()).isEqualTo("MacBook Pro");
-        verify(repository, times(1)).findBySku("MBP-001");
+        verify(queryService, times(1)).getBySku("MBP-001");
     }
 
     @Test
     @DisplayName("should throw ProductNotFoundException when SKU does not exist")
     void shouldThrowProductNotFoundExceptionWhenSkuDoesNotExist() {
-        when(repository.findBySku("UNKNOWN")).thenReturn(Optional.empty());
+        when(queryService.getBySku("UNKNOWN")).thenThrow(new ProductNotFoundException("UNKNOWN"));
 
         assertThatThrownBy(() -> service.getBySku("UNKNOWN"))
                 .isInstanceOf(ProductNotFoundException.class)
@@ -170,14 +171,14 @@ class ProductServiceTest {
     @Test
     @DisplayName("should return products when category and max price match")
     void shouldReturnProductsWhenCategoryAndMaxPriceMatch() {
-        when(repository.findByCategoryAndPriceLessThan("Electronics", 2500.0))
+        when(queryService.getByCategoryUnderPrice("Electronics", 2500.0))
                 .thenReturn(List.of(product));
 
         List<Product> results = service.getByCategoryUnderPrice("Electronics", 2500.0);
 
         assertThat(results).hasSize(1);
         assertThat(results.getFirst().getCategory()).isEqualTo("Electronics");
-        verify(repository, times(1)).findByCategoryAndPriceLessThan("Electronics", 2500.0);
+        verify(queryService, times(1)).getByCategoryUnderPrice("Electronics", 2500.0);
     }
 
     // ── update ────────────────────────────────────────────────────────────────
@@ -192,7 +193,7 @@ class ProductServiceTest {
         updated.setPrice(new BigDecimal("2499.99"));
         updated.setDescription("Apple M3 Max chip");
 
-        when(repository.findById(1L)).thenReturn(Optional.of(product));
+        when(queryService.getById(1L)).thenReturn(product);
         when(repository.findBySku("MBP-016")).thenReturn(Optional.empty());
         when(repository.save(product)).thenReturn(product);
 
@@ -216,7 +217,7 @@ class ProductServiceTest {
         updated.setCategory("Electronics");
         updated.setPrice(new BigDecimal("2499.99"));
 
-        when(repository.findById(1L)).thenReturn(Optional.of(product));
+        when(queryService.getById(1L)).thenReturn(product);
         when(repository.findBySku("CONFLICT-SKU")).thenReturn(Optional.of(conflicting));
 
         assertThatThrownBy(() -> service.update(1L, updated))
@@ -236,13 +237,13 @@ class ProductServiceTest {
         updated.setPrice(new BigDecimal("1899.99"));
         updated.setDescription("Updated description");
 
-        when(repository.findById(1L)).thenReturn(Optional.of(product));
+        when(queryService.getById(1L)).thenReturn(product);
         when(repository.save(product)).thenReturn(product);
 
         Product result = service.update(1L, updated);
 
         assertThat(result.getName()).isEqualTo("MacBook Pro Updated");
-        // findBySku should NOT be called because the SKU didn't change
+        // findBySku should NOT be called on repository because the SKU didn't change
         verify(repository, never()).findBySku(anyString());
         verify(repository, times(1)).save(product);
     }
