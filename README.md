@@ -14,6 +14,13 @@ A RESTful API for managing a product catalog, built with Spring Boot. Features p
 
 **Prerequisites:** Java 25, Docker
 
+## Environment Variables
+
+Copy `.env.example` to `.env` and fill in your values:
+```bash
+cp .env.example .env
+```
+
 ```bash
 # Start PostgreSQL and Redis
 docker-compose up -d
@@ -56,3 +63,12 @@ Integration tests use TestContainers and do not require a running local database
 ```bash
 ./mvnw test
 ```
+
+## Key Concepts
+
+- **Database indexes** — B-Tree indexes on `category`, `sku`, and a composite index on `category + price` for fast filtered queries
+- **Redis caching** — `@Cacheable`, `@CachePut`, `@CacheEvict` with a dedicated `ProductQueryService` to avoid Spring AOP self-invocation issues
+- **Cache invalidation** — write-through caching on save/update, eviction on delete
+- **DTOs + Mapper** — entities never exposed directly; clean separation between API contract and database layer
+- **Global exception handling** — proper 404, 409, 400 responses via `@RestControllerAdvice`
+- **Testcontainers** — integration tests spin up real PostgreSQL and Redis containers, no mocks
