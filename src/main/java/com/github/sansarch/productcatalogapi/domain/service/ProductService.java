@@ -6,9 +6,11 @@ import com.github.sansarch.productcatalogapi.domain.exception.ProductNotFoundExc
 import com.github.sansarch.productcatalogapi.domain.repository.ProductRepository;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
+import java.math.BigDecimal;
 
 @Service
 public class ProductService {
@@ -21,8 +23,8 @@ public class ProductService {
         this.queryService = queryService;
     }
 
-    public List<Product> getAllProducts() {
-        return repository.findAll();
+    public Page<Product> getAllProducts(Pageable pageable) {
+        return queryService.getAllProducts(pageable);
     }
 
     public Product getById(Long id) {
@@ -33,12 +35,12 @@ public class ProductService {
         return queryService.getBySku(sku);
     }
 
-    public List<Product> getByCategory(String category) {
-        return queryService.getByCategory(category);
+    public Page<Product> getByCategory(String category, Pageable pageable) {
+        return queryService.getByCategory(category, pageable);
     }
 
-    public List<Product> getByCategoryUnderPrice(String category, Double maxPrice) {
-        return queryService.getByCategoryUnderPrice(category, maxPrice);
+    public Page<Product> getByCategoryUnderPrice(String category, BigDecimal maxPrice, Pageable pageable) {
+        return queryService.getByCategoryUnderPrice(category, maxPrice, pageable);
     }
 
     // @CachePut updates the cache when you save -- keeps it in sync

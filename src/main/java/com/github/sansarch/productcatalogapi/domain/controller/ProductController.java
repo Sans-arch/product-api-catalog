@@ -5,12 +5,15 @@ import com.github.sansarch.productcatalogapi.domain.dto.ProductResponseDTO;
 import com.github.sansarch.productcatalogapi.domain.entity.Product;
 import com.github.sansarch.productcatalogapi.domain.mapper.ProductMapper;
 import com.github.sansarch.productcatalogapi.domain.service.ProductService;
+import com.github.sansarch.productcatalogapi.domain.shared.PageResponseDTO;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+import java.math.BigDecimal;
 
 @RestController
 @RequestMapping("/api/products")
@@ -25,10 +28,8 @@ public class ProductController {
     }
 
     @GetMapping
-    public List<ProductResponseDTO> getAll() {
-        return service.getAllProducts().stream()
-                .map(mapper::toResponse)
-                .toList();
+    public PageResponseDTO<ProductResponseDTO> getAll(@PageableDefault(size = 10, sort = "name") Pageable pageable) {
+       return PageResponseDTO.from(service.getAllProducts(pageable).map(mapper::toResponse));
     }
 
     @GetMapping("/{id}")
@@ -42,17 +43,19 @@ public class ProductController {
     }
 
     @GetMapping("/category/{category}")
-    public List<ProductResponseDTO> getByCategory(@PathVariable String category) {
-        return service.getByCategory(category).stream()
-                .map(mapper::toResponse)
-                .toList();
+    public PageResponseDTO<ProductResponseDTO> getByCategory(@PathVariable String category, @PageableDefault(size = 10, sort = "name") Pageable pageable) {
+        return PageResponseDTO.from(
+                service.getByCategory(category, pageable).map(mapper::toResponse)
+        );
     }
 
     @GetMapping("/category/{category}/under/{maxPrice}")
-    public List<ProductResponseDTO> getByCategoryUnderPrice(@PathVariable String category, @PathVariable Double maxPrice) {
-        return service.getByCategoryUnderPrice(category, maxPrice).stream()
-                .map(mapper::toResponse)
-                .toList();
+    public PageResponseDTO<ProductResponseDTO> getByCategoryUnderPrice(@PathVariable String category,
+                                                                       @PathVariable BigDecimal maxPrice,
+                                                                       @PageableDefault(size = 10, sort = "name") Pageable pageable) {
+        return PageResponseDTO.from(
+                service.getByCategoryUnderPrice(category, maxPrice, pageable).map(mapper::toResponse)
+        );
     }
 
     @PostMapping

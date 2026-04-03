@@ -12,6 +12,11 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
@@ -94,23 +99,37 @@ class ProductServiceTest {
     @Test
     @DisplayName("should return matching products when category exists")
     void shouldReturnMatchingProductsWhenCategoryExists() {
-        when(queryService.getByCategory("Electronics")).thenReturn(List.of(product));
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Product> page = new PageImpl<>(List.of(product), pageable, 1);
+        when(queryService.getByCategory("Electronics", pageable)).thenReturn(page);
 
-        List<Product> results = service.getByCategory("Electronics");
+        Page<Product> results = service.getByCategory("Electronics", pageable);
 
-        assertThat(results).hasSize(1);
-        assertThat(results.getFirst().getCategory()).isEqualTo("Electronics");
-        verify(queryService, times(1)).getByCategory("Electronics");
+        assertThat(results.getContent()).hasSize(1);
+        assertThat(results.getContent().getFirst().getCategory()).isEqualTo("Electronics");
+        verify(queryService, times(1)).getByCategory("Electronics", pageable);
     }
 
     @Test
     @DisplayName("should call repository when deleting product")
     void shouldCallRepositoryWhenDeletingProduct() {
-        doNothing().when(repository).deleteById(1L);
+        when(repository.existsById(1L)).thenReturn(true);
 
         service.delete(1L);
 
         verify(repository, times(1)).deleteById(1L);
+    }
+
+    @Test
+    @DisplayName("should throw ProductNotFoundException when deleting non-existing product")
+    void shouldThrowProductNotFoundExceptionWhenDeletingNonExistingProduct() {
+        when(repository.existsById(999L)).thenReturn(false);
+
+        assertThatThrownBy(() -> service.delete(999L))
+                .isInstanceOf(ProductNotFoundException.class)
+                .hasMessageContaining("999");
+
+        verify(repository, never()).deleteById(anyLong());
     }
 
     @Test
@@ -122,8 +141,6 @@ class ProductServiceTest {
                 .isInstanceOf(ProductNotFoundException.class);
     }
 
-    // ── getAllProducts ────────────────────────────────────────────────────────
-
     @Test
     @DisplayName("should return all products")
     void shouldReturnAllProducts() {
@@ -134,15 +151,15 @@ class ProductServiceTest {
         other.setCategory("Electronics");
         other.setPrice(new BigDecimal("999.99"));
 
-        when(repository.findAll()).thenReturn(List.of(product, other));
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Product> page = new PageImpl<>(List.of(product, other), pageable, 2);
+        when(queryService.getAllProducts(pageable)).thenReturn(page);
 
-        List<Product> results = service.getAllProducts();
+        Page<Product> results = service.getAllProducts(pageable);
 
-        assertThat(results).hasSize(2);
-        verify(repository, times(1)).findAll();
+        assertThat(results.getContent()).hasSize(2);
+        verify(queryService, times(1)).getAllProducts(pageable);
     }
-
-    // ── getBySku ─────────────────────────────────────────────────────────────
 
     @Test
     @DisplayName("should return product when SKU exists")
@@ -166,22 +183,20 @@ class ProductServiceTest {
                 .hasMessageContaining("UNKNOWN");
     }
 
-    // ── getByCategoryUnderPrice ───────────────────────────────────────────────
-
     @Test
     @DisplayName("should return products when category and max price match")
     void shouldReturnProductsWhenCategoryAndMaxPriceMatch() {
-        when(queryService.getByCategoryUnderPrice("Electronics", 2500.0))
-                .thenReturn(List.of(product));
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Product> page = new PageImpl<>(List.of(product), pageable, 1);
+        when(queryService.getByCategoryUnderPrice("Electronics", new BigDecimal("2500.0"), pageable))
+                .thenReturn(page);
 
-        List<Product> results = service.getByCategoryUnderPrice("Electronics", 2500.0);
+        Page<Product> results = service.getByCategoryUnderPrice("Electronics", new BigDecimal("2500.0"), pageable);
 
-        assertThat(results).hasSize(1);
-        assertThat(results.getFirst().getCategory()).isEqualTo("Electronics");
-        verify(queryService, times(1)).getByCategoryUnderPrice("Electronics", 2500.0);
+        assertThat(results.getContent()).hasSize(1);
+        assertThat(results.getContent().getFirst().getCategory()).isEqualTo("Electronics");
+        verify(queryService, times(1)).getByCategoryUnderPrice("Electronics", new BigDecimal("2500.0"), pageable);
     }
-
-    // ── update ────────────────────────────────────────────────────────────────
 
     @Test
     @DisplayName("should update and return product when ID exists and SKU is unique")

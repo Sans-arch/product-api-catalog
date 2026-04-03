@@ -113,13 +113,13 @@ class ProductControllerIntegrationTest extends BaseIntegrationTest {
 
         mockMvc.perform(get("/api/products"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(2)));
+                .andExpect(jsonPath("$.content", hasSize(2)));
     }
 
     @Test
     @DisplayName("should return product by id")
     void shouldReturnProductById() throws Exception {
-        Long id = createProduct(MACBOOK);
+        long id = createProduct(MACBOOK);
 
         mockMvc.perform(get("/api/products/" + id))
                 .andExpect(status().isOk())
@@ -145,8 +145,8 @@ class ProductControllerIntegrationTest extends BaseIntegrationTest {
 
         mockMvc.perform(get("/api/products/category/Electronics"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(1)))
-                .andExpect(jsonPath("$[0].category").value("Electronics"));
+                .andExpect(jsonPath("$.content", hasSize(1)))
+                .andExpect(jsonPath("$.content[0].category").value("Electronics"));
     }
 
     @Test
@@ -162,14 +162,14 @@ class ProductControllerIntegrationTest extends BaseIntegrationTest {
 
         mockMvc.perform(get("/api/products/category/Electronics/under/1500"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(1)))
-                .andExpect(jsonPath("$[0].name").value("iPhone 15"));
+                .andExpect(jsonPath("$.content", hasSize(1)))
+                .andExpect(jsonPath("$.content[0].name").value("iPhone 15"));
     }
 
     @Test
     @DisplayName("should update product and return 200")
     void shouldUpdateProductAndReturn200() throws Exception {
-        Long id = createProduct(MACBOOK);
+        long id = createProduct(MACBOOK);
 
         ProductRequestDTO updated = new ProductRequestDTO(
                 "MacBook Pro M3", "Electronics", "MBP-001", new BigDecimal("1799.99"), "Updated"
@@ -196,7 +196,7 @@ class ProductControllerIntegrationTest extends BaseIntegrationTest {
     @Test
     @DisplayName("should delete product and return 204")
     void shouldDeleteProductAndReturn204() throws Exception {
-        Long id = createProduct(MACBOOK);
+        long id = createProduct(MACBOOK);
 
         mockMvc.perform(delete("/api/products/" + id))
                 .andExpect(status().isNoContent());
@@ -208,14 +208,16 @@ class ProductControllerIntegrationTest extends BaseIntegrationTest {
     @Test
     @DisplayName("should serve cached product without hitting the database")
     void shouldServeCachedProductWithoutHittingDatabase() throws Exception {
-        Long id = createProduct(MACBOOK);
+        long id = createProduct(MACBOOK);
 
         // First request — populates cache
         mockMvc.perform(get("/api/products/" + id))
                 .andExpect(status().isOk());
 
         // Confirm key exists in cache manager
-        assertThat(cacheManager.getCache("products").get(id)).isNotNull();
+        var productsCache = cacheManager.getCache("products");
+        assertThat(productsCache).isNotNull();
+        assertThat(productsCache.get(id)).isNotNull();
 
         // Delete directly from DB, bypassing the service
         productRepository.deleteAll();
@@ -229,25 +231,27 @@ class ProductControllerIntegrationTest extends BaseIntegrationTest {
     @Test
     @DisplayName("should evict cache after product deletion")
     void shouldEvictCacheAfterDeletion() throws Exception {
-        Long id = createProduct(MACBOOK);
+        long id = createProduct(MACBOOK);
 
         // Populate cache
         mockMvc.perform(get("/api/products/" + id))
                 .andExpect(status().isOk());
 
-        assertThat(cacheManager.getCache("products").get(id)).isNotNull();
+        var productsCache = cacheManager.getCache("products");
+        assertThat(productsCache).isNotNull();
+        assertThat(productsCache.get(id)).isNotNull();
 
         // Delete via service — should evict cache
         mockMvc.perform(delete("/api/products/" + id))
                 .andExpect(status().isNoContent());
 
-        assertThat(cacheManager.getCache("products").get(id)).isNull();
+        assertThat(productsCache.get(id)).isNull();
     }
 
     @Test
     @DisplayName("should update cache after product update")
     void shouldUpdateCacheAfterProductUpdate() throws Exception {
-        Long id = createProduct(MACBOOK);
+        long id = createProduct(MACBOOK);
 
         // Populate cache
         mockMvc.perform(get("/api/products/" + id))
