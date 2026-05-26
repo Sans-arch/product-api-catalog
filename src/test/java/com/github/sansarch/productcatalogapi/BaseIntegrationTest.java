@@ -1,6 +1,6 @@
 package com.github.sansarch.productcatalogapi;
 
-import com.github.sansarch.productcatalogapi.domain.repository.ProductRepository;
+import com.github.sansarch.productcatalogapi.infrastructure.adapters.out.jpa.repositories.SpringJpaProductRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -26,18 +26,17 @@ public abstract class BaseIntegrationTest {
     static GenericContainer<?> redis = new GenericContainer<>("redis:7-alpine")
             .withExposedPorts(6379);
 
-    // Tells Spring to use the container's dynamic port instead of application.yaml
     @DynamicPropertySource
     static void overrideProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", postgres::getJdbcUrl);
         registry.add("spring.datasource.username", postgres::getUsername);
         registry.add("spring.datasource.password", postgres::getPassword);
-        registry.add("spring.redis.host", redis::getHost);
-        registry.add("spring.redis.port", () -> redis.getMappedPort(6379));
+        registry.add("spring.data.redis.host", redis::getHost);
+        registry.add("spring.data.redis.port", () -> redis.getMappedPort(6379));
     }
 
     @Autowired
-    protected ProductRepository productRepository;
+    protected SpringJpaProductRepository springJpaProductRepository;
 
     @Autowired
     protected RedisTemplate<Object, Object> redisTemplate;
@@ -47,7 +46,7 @@ public abstract class BaseIntegrationTest {
 
     @BeforeEach
     void cleanUp() {
-        productRepository.deleteAll();
+        springJpaProductRepository.deleteAll();
         redisTemplate.execute((org.springframework.data.redis.core.RedisCallback<Void>) connection -> {
             connection.serverCommands().flushAll();
             return null;
